@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "../../panorama/scripts/custom_game",
+    "target": "ES2017",
+    "lib": ["ES2017"],
+    "types": ["@moddota/panorama-types"],
+    "moduleResolution": "node",
+    "strict": true,
+    "skipLibCheck": true,
+    "declaration": false
+  },
+  "include": ["./**/*.ts", "../common/**/*.d.ts"]
+}

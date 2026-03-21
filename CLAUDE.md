@@ -8,6 +8,13 @@ A Dota 2 custom game mode combining **Random Deathmatch** (new random hero on ea
 
 ```
 content/dota_addons/randomdeathmatchturbo/   <-- SOURCE (you edit here)
+  src/                          # TypeScript source (compiles to Lua/JS)
+    vscripts/                   # Server-side TS → Lua (via tstl)
+      tsconfig.json
+    panorama/                   # Client-side TS → JS (via tsc)
+      tsconfig.json
+    common/                     # Shared type declarations (.d.ts)
+      types.d.ts
   scripts/
     vscripts/
       addon_game_mode.lua     # Engine entry point (Precache + Activate)
@@ -24,11 +31,47 @@ content/dota_addons/randomdeathmatchturbo/   <-- SOURCE (you edit here)
       turbo_rdm_hud.js        # HUD logic (hero selection UI, swap notifications)
     styles/custom_game/
       turbo_rdm_hud.css       # HUD styling
-  addoninfo.txt               # Addon metadata
+  package.json                  # npm deps (tstl, dota-lua-types, panorama-types)
+  addoninfo.txt                 # Addon metadata
 
 game/dota_addons/randomdeathmatchturbo/      <-- RUNTIME (engine reads here)
   (mirror of the above - must be manually synced)
 ```
+
+## TypeScript Development (Recommended for New Code)
+
+The project supports writing game logic in TypeScript with **full autocomplete** for the entire Dota 2 API. TypeScript compiles to Lua (vscripts) or JS (panorama) automatically.
+
+### Setup
+```bash
+cd "<project_root>"
+npm install                    # Install dependencies (first time only)
+```
+
+### Development Workflow
+```bash
+npm run dev                    # Watch mode: auto-recompile on save (both vscripts + panorama)
+npm run dev:vscripts           # Watch vscripts only (TS → Lua)
+npm run dev:panorama           # Watch panorama only (TS → JS)
+npm run build                  # One-shot build (both)
+```
+
+### How It Works
+- **VScripts**: `src/vscripts/*.ts` → compiled by `tstl` (TypeScript-to-Lua) → output to `scripts/vscripts/*.lua`
+- **Panorama**: `src/panorama/*.ts` → compiled by `tsc` → output to `panorama/scripts/custom_game/*.js`
+- **Shared types**: `src/common/*.d.ts` — event payloads, constants shared between server and client
+- **API types**: `@moddota/dota-lua-types` (server) and `@moddota/panorama-types` (client) provide full IntelliSense
+
+### Key Benefits
+- **Autocomplete**: Type `GameRules.` or `mode.` and see every available method with parameter types
+- **Compile-time errors**: Catch typos, wrong argument types, and missing methods before launching the game
+- **Gradual migration**: Existing `.lua` and `.js` files continue to work — migrate files one at a time
+
+### Important Notes
+- The existing Lua/JS files are the **active game code**. TypeScript is opt-in for new code or gradual rewrites.
+- After `npm run build`, you still need to copy files to the `game/` directory (see below).
+- `addon_game_mode.lua` **must stay as Lua** — the engine requires this specific file at this path.
+- Reference: [ModDota TypeScript guide](https://moddota.com/scripting/Typescript/typescript-introduction/), [API docs](https://docs.moddota.com/lua_server/)
 
 ## Critical: Dual Directory System
 
