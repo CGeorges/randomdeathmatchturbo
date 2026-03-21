@@ -123,12 +123,12 @@ function OnHeroChoices(event) {
             label.AddClass("hero-choice-name");
             label.text = heroName.replace("npc_dota_hero_", "").replace(/_/g, " ").toUpperCase();
 
-            // Click to pick this hero
+            // Click to pick this hero — hide overlay immediately
             card.SetPanelEvent("onactivate", function() {
                 GameEvents.SendCustomGameEventToServer("turbo_rdm_hero_pick", {
                     hero_name: heroName
                 });
-                ShowRespawnWait(heroName);
+                HideSelectionUI();
             });
         })(heroes[i]);
     }
@@ -182,13 +182,11 @@ function UpdateSelectionTimer() {
 
 /**
  * Called when the server confirms a hero was chosen (manual or auto).
- * Don't hide — switch to respawn wait mode so the countdown stays visible.
- * The UI is hidden later when turbo_rdm_hero_swap fires for the local player.
+ * Hide the overlay immediately — respawn timer is already visible in the
+ * default Dota death UI, no need for a custom overlay.
  */
 function OnHeroChosen() {
-    if (!isWaitingForRespawn) {
-        ShowRespawnWait("");
-    }
+    HideSelectionUI();
 }
 
 /**

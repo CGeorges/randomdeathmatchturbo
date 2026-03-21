@@ -3,7 +3,10 @@
     "allow": [
       "Bash(find \"c:/Program Files \\(x86\\)/Steam/steamapps/common/dota 2 beta/content/dota_addons/randomdeathmatchturbo\" -type f -o -type d)",
       "WebFetch(domain:moddota.com)",
-      "WebSearch"
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "mcp__plugin_context7_context7__query-docs",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ]
   }
 }

@@ -27,9 +27,6 @@ TurboRDM.swappingPlayers   = {}   -- [playerID] = true while a swap is in progre
 
 local HERO_CHOICES_COUNT = 3
 
--- TP Scroll item name
-local TP_SCROLL = "item_tpscroll"
-local FREE_TP_INTERVAL = 90  -- Re-grant free TP every 90s if missing
 
 --------------------------------------------------------------------------------
 -- Init (called from Activate() in addon_game_mode.lua)
@@ -44,8 +41,12 @@ function TurboRDM:InitGameMode()
     ---------------------------------------------------------------------------
     GameRules:SetUseUniversalShopMode(true)           -- Buy anywhere
     GameRules:SetHeroSelectionTime(0)                  -- Skip pick screen
-    GameRules:SetPreGameTime(30)                       -- Short pre-game
-    GameRules:SetPostGameTime(30)
+    GameRules:SetStrategyTime(0)                       -- Skip strategy phase
+    GameRules:SetShowcaseTime(0)                       -- Skip showcase phase
+    GameRules:SetPreGameTime(45)                       -- Short pre-game
+    GameRules:SetPostGameTime(45)
+    GameRules:EnableCustomGameSetupAutoLaunch(true)
+    GameRules:SetCustomGameSetupAutoLaunchDelay(0)
     GameRules:SetGoldPerTick(2)                        -- 2x passive gold
     GameRules:SetGoldTickTime(0.6)
     GameRules:SetStartingGold(750)
@@ -93,6 +94,12 @@ function TurboRDM:InitGameMode()
 
     mode:SetCustomGameForceHero("")  -- No forced hero
 
+    -- Free TP on death (built-in Turbo mechanic — replaces manual GrantFreeTP)
+    mode:SetGiveFreeTPOnDeath(true)
+
+    -- Shorter backpack swap cooldown (Turbo: 3s vs normal 6s)
+    mode:SetCustomBackpackSwapCooldown(3.0)
+
     ---------------------------------------------------------------------------
     -- Event listeners
     ---------------------------------------------------------------------------
@@ -108,10 +115,13 @@ function TurboRDM:InitGameMode()
     -- Thinker for periodic tasks (free TP scroll grants, etc.)
     mode:SetThink("OnThink", self, "TurboRDMThink", 1.0)
 
-    -- Separate thinker for river rune cleanup (remove old power runes before
-    -- new ones spawn so they don't stack up; bounty/jungle runes are kept)
-    self._lastRuneCleanup = -999
-    mode:SetThink("OnRuneThink", self, "RuneCleanupThink", 1.0)
+    ---------------------------------------------------------------------------
+    -- Rune system: tell the engine to use default Dota rune spawn logic
+    -- with the standard intervals for each rune type.
+    ---------------------------------------------------------------------------
+    mode:SetUseDefaultDOTARuneSpawnLogic(true)
+    GameRules:SetRuneSpawnTime(120)                -- base: every 2 min
+    mode:SetBountyRuneSpawnInterval(180)           -- bounty: every 3 min
 
     print("[TurboRDM] Initialization complete.")
 end
@@ -288,26 +298,6 @@ function TurboRDM:RestorePlayerInventory(hero, playerID)
 end
 
 --------------------------------------------------------------------------------
--- Grant a free TP scroll (Turbo mechanic)
---------------------------------------------------------------------------------
-function TurboRDM:GrantFreeTP(hero)
-    if not hero or not hero:IsAlive() then return end
-
-    -- Check if they already have a TP
-    for slot = 0, 16 do
-        local item = hero:GetItemInSlot(slot)
-        if item and item:GetAbilityName() == TP_SCROLL then
-            return  -- Already has one
-        end
-    end
-
-    local tp = CreateItem(TP_SCROLL, hero, hero)
-    if tp then
-        hero:AddItem(tp)
-    end
-end
-
---------------------------------------------------------------------------------
 -- Weaken buildings (Turbo-style: buildings take more damage / have less HP)
 --------------------------------------------------------------------------------
 function TurboRDM:ApplyTurboBuildingModifiers()
@@ -374,14 +364,21 @@ end
 --------------------------------------------------------------------------------
 function TurboRDM:OnNPCSpawned(event)
     local npc = EntIndexToHScript(event.entindex)
-    if not npc or not npc:IsRealHero() then return end
+    if not npc then return end
+
+    -- Turbo courier speed: boost couriers to ~1100 move speed
+    if npc:IsCourier() then
+        Timers:CreateTimer(0.1, function()
+            if npc and IsValidEntity(npc) then
+                npc:SetBaseMoveSpeed(1100)
+            end
+        end)
+        return
+    end
+
+    if not npc:IsRealHero() then return end
 
     local playerID = npc:GetPlayerID()
-
-    -- Grant free TP scroll on every spawn
-    Timers:CreateTimer(0.5, function()
-        self:GrantFreeTP(npc)
-    end)
 
     -- If this player has a pending hero swap (engine just respawned the old
     -- hero after death / buyback), execute the swap now.
@@ -559,11 +556,6 @@ function TurboRDM:ExecuteHeroSwap(playerID, heroName)
             newHero:SetRespawnsDisabled(false)
             newHero:RespawnHero(false, false)
 
-            -- Grant free TP
-            Timers:CreateTimer(0.5, function()
-                self:GrantFreeTP(newHero)
-            end)
-
             -- Notify all players
             local msg = PlayerResource:GetPlayerName(playerID) ..
                 " has become " .. heroName .. "!"
@@ -605,75 +597,9 @@ end
 -- Periodic thinker (runs every second)
 --------------------------------------------------------------------------------
 function TurboRDM:OnThink()
-    -- Grant TP scrolls periodically to heroes who lost theirs
-    if GameRules:State_Get() == DOTA_GAMERULES_STATE_GAME_IN_PROGRESS then
-        for playerID = 0, PlayerResource:GetPlayerCount() - 1 do
-            if PlayerResource:IsValidPlayerID(playerID) then
-                local hero = PlayerResource:GetSelectedHeroEntity(playerID)
-                if hero and hero:IsAlive() then
-                    self:GrantFreeTP(hero)
-                end
-            end
-        end
-    end
-
-    return 30  -- Run again in 30 seconds
+    -- Placeholder for future periodic tasks
+    -- Free TP is now handled by mode:SetGiveFreeTPOnDeath(true)
+    return 30
 end
 
---------------------------------------------------------------------------------
--- Rune cleanup thinker (runs every 2 seconds)
---
--- Custom games don't properly handle rune spawning, so we fix:
---   1. Jungle spawners produce power runes (should be bounty only)
---   2. Both river spots spawn runes (after 6:00 only one should)
---   3. Old river runes aren't replaced when new ones spawn
---
--- Rune positions: river spawners are within ~3500 units of map center (0,0);
--- jungle/bounty spawners are farther out.
--- Rune type: identified via model name (bounty rune model contains "bounty").
---------------------------------------------------------------------------------
-function TurboRDM:OnRuneThink()
-    if GameRules:State_Get() ~= DOTA_GAMERULES_STATE_GAME_IN_PROGRESS then
-        return 2.0
-    end
 
-    local gameTime = GameRules:GetDOTATime(false, false)
-    if gameTime < 0 then return 2.0 end
-
-    local runes = Entities:FindAllByClassname("dota_item_rune")
-    local riverRunes = {}
-
-    for _, rune in pairs(runes) do
-        if rune and IsValidEntity(rune) then
-            local pos = rune:GetAbsOrigin()
-            local distSq = pos.x * pos.x + pos.y * pos.y
-            local isRiver = distSq < 3500 * 3500
-
-            if isRiver then
-                table.insert(riverRunes, rune)
-            else
-                -- Jungle: only bounty runes belong here
-                local model = rune:GetModelName() or ""
-                if not string.find(model, "bounty") then
-                    UTIL_Remove(rune)
-                    print("[TurboRDM] Removed non-bounty rune from jungle")
-                end
-            end
-        end
-    end
-
-    -- After 6:00, only ONE power rune should exist on the river at a time
-    -- (matching normal Dota behaviour). If there are multiple, randomly
-    -- keep one and remove the rest.
-    if gameTime >= 360 and #riverRunes > 1 then
-        local keep = RandomInt(1, #riverRunes)
-        for i, rune in ipairs(riverRunes) do
-            if i ~= keep then
-                UTIL_Remove(rune)
-            end
-        end
-        print("[TurboRDM] Kept 1 of " .. #riverRunes .. " river runes")
-    end
-
-    return 2.0
-end
