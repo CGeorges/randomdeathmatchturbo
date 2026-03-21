@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find \"c:/Program Files \\(x86\\)/Steam/steamapps/common/dota 2 beta/content/dota_addons/randomdeathmatchturbo\" -type f -o -type d)",
+      "WebFetch(domain:moddota.com)",
+      "WebSearch"
+    ]
+  }
+}

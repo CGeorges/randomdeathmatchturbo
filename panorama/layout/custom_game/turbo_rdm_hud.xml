@@ -1,0 +1,25 @@
+<root>
+    <styles>
+        <include src="file://{resources}/styles/custom_game/turbo_rdm_hud.css" />
+    </styles>
+    <scripts>
+        <include src="file://{resources}/scripts/custom_game/turbo_rdm_hud.js" />
+    </scripts>
+    <Panel class="turbo-rdm-hud" hittest="false">
+        <!-- Kill feed enhancement showing hero swaps -->
+        <Panel class="swap-notification" id="SwapNotification" style="visibility: collapse;">
+            <Label class="swap-text" id="SwapText" text="" />
+        </Panel>
+
+        <!-- Hero selection overlay (shown on death) -->
+        <Panel class="hero-selection-overlay" id="HeroSelectionOverlay" style="visibility: collapse;" hittest="false">
+            <Panel class="hero-selection-box" hittest="true">
+                <Label class="selection-title" id="SelectionTitle" text="CHOOSE YOUR NEXT HERO" />
+                <Label class="selection-timer" id="SelectionTimer" text="" />
+                <Panel class="hero-choices" id="HeroChoices">
+                    <!-- 3 hero choice cards populated via JS -->
+                </Panel>
+            </Panel>
+        </Panel>
+    </Panel>
+</root>

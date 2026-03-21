@@ -1,0 +1,187 @@
+/* Turbo RDM HUD Styles */
+
+.turbo-rdm-hud {
+    width: 100%;
+    height: 100%;
+    flow-children: down;
+    horizontal-align: center;
+}
+
+/* Mode banner at top of screen */
+.mode-banner {
+    horizontal-align: center;
+    margin-top: 8px;
+    padding: 6px 20px;
+    background-color: rgba(0, 0, 0, 0.75);
+    border-radius: 4px;
+    flow-children: down;
+}
+
+.mode-title {
+    color: #ff6b35;
+    font-size: 16px;
+    font-weight: bold;
+    text-align: center;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+.mode-subtitle {
+    color: #aaaaaa;
+    font-size: 11px;
+    text-align: center;
+    margin-top: 2px;
+}
+
+/* Hero history strip */
+.hero-history {
+    horizontal-align: center;
+    margin-top: 4px;
+    padding: 4px 12px;
+    background-color: rgba(0, 0, 0, 0.6);
+    border-radius: 3px;
+    flow-children: right;
+}
+
+.history-label {
+    color: #888888;
+    font-size: 11px;
+    vertical-align: center;
+    margin-right: 8px;
+}
+
+.history-icons {
+    flow-children: right;
+}
+
+.history-icon {
+    width: 32px;
+    height: 32px;
+    margin-right: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+}
+
+.history-icon-current {
+    border: 2px solid #ff6b35;
+}
+
+/* Swap notification (center screen flash) */
+.swap-notification {
+    horizontal-align: center;
+    vertical-align: center;
+    padding: 12px 30px;
+    background-color: rgba(0, 0, 0, 0.85);
+    border: 1px solid #ff6b35;
+    border-radius: 6px;
+}
+
+.swap-text {
+    color: #ffffff;
+    font-size: 22px;
+    font-weight: bold;
+    text-align: center;
+    text-shadow: 0px 0px 8px rgba(255, 107, 53, 0.8);
+}
+
+/* ============================================================
+   Hero Selection Overlay (shown on death)
+   ============================================================ */
+
+.hero-selection-overlay {
+    width: 100%;
+    height: 100%;
+    horizontal-align: center;
+    vertical-align: center;
+    background-color: rgba(0, 0, 0, 0.6);
+}
+
+.hero-selection-box {
+    horizontal-align: center;
+    vertical-align: center;
+    flow-children: down;
+    padding: 24px 40px;
+    background-color: rgba(15, 15, 20, 0.95);
+    border: 2px solid #ff6b35;
+    border-radius: 8px;
+    box-shadow: 0px 0px 30px rgba(255, 107, 53, 0.3);
+}
+
+.selection-title {
+    color: #ff6b35;
+    font-size: 24px;
+    font-weight: bold;
+    text-align: center;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+}
+
+.selection-timer {
+    color: #aaaaaa;
+    font-size: 14px;
+    text-align: center;
+    margin-bottom: 16px;
+}
+
+.hero-choices {
+    flow-children: right;
+    horizontal-align: center;
+}
+
+/* Individual hero choice card */
+.hero-choice-card {
+    flow-children: down;
+    horizontal-align: center;
+    margin: 0px 12px;
+    padding: 12px;
+    background-color: rgba(30, 30, 40, 0.9);
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+    transition-property: border-color, pre-transform-scale2d, background-color;
+    transition-duration: 0.15s;
+    transition-timing-function: ease-in-out;
+}
+
+.hero-choice-card:hover {
+    border-color: #ff6b35;
+    background-color: rgba(255, 107, 53, 0.12);
+    pre-transform-scale2d: 1.05;
+}
+
+.hero-choice-portrait {
+    width: 128px;
+    height: 72px;
+    horizontal-align: center;
+    border-radius: 4px;
+    margin-bottom: 8px;
+}
+
+.hero-choice-name {
+    color: #dddddd;
+    font-size: 12px;
+    font-weight: bold;
+    text-align: center;
+    letter-spacing: 1px;
+}
+
+.hero-choice-card:hover .hero-choice-name {
+    color: #ff6b35;
+}
+
+/* Respawn countdown (shown after hero is picked, waiting for timer) */
+.respawn-countdown {
+    font-size: 32px;
+    color: #ffffff;
+    font-weight: bold;
+    margin-top: 12px;
+    margin-bottom: 8px;
+    text-shadow: 0px 0px 10px rgba(255, 107, 53, 0.6);
+}
+
+/* Fade-in animation */
+.selection-fade-in {
+    opacity: 1;
+    transition-property: opacity;
+    transition-duration: 0.3s;
+}
