@@ -9,8 +9,8 @@ print("[TurboRDM] addon_game_mode.lua is loading...")
 -- Load utilities
 require("timers")
 
--- Load main game mode class
-require("turbo_rdm")
+-- Load main game mode module (compiled from TypeScript via tstl)
+local TurboRDM = require("turbo_rdm")
 
 print("[TurboRDM] All modules loaded successfully.")
 
@@ -19,7 +19,7 @@ print("[TurboRDM] All modules loaded successfully.")
 --------------------------------------------------------------------------------
 function Precache(context)
     print("[TurboRDM] Precache() called!")
-    -- Hero models are loaded by ReplaceHeroWith at runtime.
+    -- Hero models are precached on-demand via PrecacheUnitByNameAsync.
     -- Precaching all 130+ heroes exceeds the engine's resource limit.
 end
 
@@ -28,6 +28,5 @@ end
 --------------------------------------------------------------------------------
 function Activate()
     print("[TurboRDM] Activate() called!")
-    GameRules.TurboRDM = TurboRDM()
-    GameRules.TurboRDM:InitGameMode()
+    TurboRDM.InitGameMode()
 end

@@ -8,34 +8,31 @@ A Dota 2 custom game mode combining **Random Deathmatch** (new random hero on ea
 
 ```
 content/dota_addons/randomdeathmatchturbo/   <-- SOURCE (you edit here)
-  src/                          # TypeScript source (compiles to Lua/JS)
-    vscripts/                   # Server-side TS → Lua (via tstl)
-      tsconfig.json
-    panorama/                   # Client-side TS → JS (via tsc)
-      tsconfig.json
-    common/                     # Shared type declarations (.d.ts)
-      types.d.ts
+  src/                          # TypeScript source (source of truth)
+    vscripts/turbo_rdm.ts      # Server game logic (TS → Lua via tstl)
+    panorama/turbo_rdm_hud.ts  # Client HUD logic (TS → JS via tsc)
+    common/types.d.ts           # Shared type declarations
   scripts/
     vscripts/
-      addon_game_mode.lua     # Engine entry point (Precache + Activate)
-      turbo_rdm.lua           # Core game mode logic (all mechanics)
+      addon_game_mode.lua     # Engine entry point (must stay Lua)
+      turbo_rdm.lua           # COMPILED from src/vscripts/ — do not edit
+      lualib_bundle.lua       # tstl runtime library — do not edit
       timers.lua              # Timer utility library
-    custom_game_mode.kv       # Game mode KV config (not auto-loaded by engine)
-    npc/
-      herolist.txt            # Legacy hardcoded hero list (UNUSED - uses npc_heroes.txt now)
+    sync.js                     # File sync script (content → game)
+    watch-sync.js               # File watcher for dev mode
   panorama/
     layout/custom_game/
       custom_ui_manifest.xml  # Registers custom HUD with the engine
       turbo_rdm_hud.xml       # HUD layout (selection overlay only)
     scripts/custom_game/
-      turbo_rdm_hud.js        # HUD logic (hero selection UI, swap notifications)
+      turbo_rdm_hud.js        # COMPILED from src/panorama/ — do not edit
     styles/custom_game/
       turbo_rdm_hud.css       # HUD styling
-  package.json                  # npm deps (tstl, dota-lua-types, panorama-types)
+  package.json                  # npm deps + build scripts
   addoninfo.txt                 # Addon metadata
 
 game/dota_addons/randomdeathmatchturbo/      <-- RUNTIME (engine reads here)
-  (mirror of the above - must be manually synced)
+  (auto-synced from content/ via npm run build/dev)
 ```
 
 ## TypeScript Development (Recommended for New Code)
@@ -50,27 +47,27 @@ npm install                    # Install dependencies (first time only)
 
 ### Development Workflow
 ```bash
-npm run dev                    # Watch mode: auto-recompile on save (both vscripts + panorama)
-npm run dev:vscripts           # Watch vscripts only (TS → Lua)
-npm run dev:panorama           # Watch panorama only (TS → JS)
-npm run build                  # One-shot build (both)
+npm run dev                    # Watch mode: recompile + auto-sync to game/ on save
+npm run build                  # One-shot build + sync to game/
+npm run sync                   # Manually sync content/ → game/ (no build)
 ```
 
 ### How It Works
-- **VScripts**: `src/vscripts/*.ts` → compiled by `tstl` (TypeScript-to-Lua) → output to `scripts/vscripts/*.lua`
-- **Panorama**: `src/panorama/*.ts` → compiled by `tsc` → output to `panorama/scripts/custom_game/*.js`
+- **VScripts**: `src/vscripts/*.ts` → compiled by `tstl` (TypeScript-to-Lua) → `scripts/vscripts/*.lua`
+- **Panorama**: `src/panorama/*.ts` → compiled by `tsc` → `panorama/scripts/custom_game/*.js`
+- **Auto-sync**: `scripts/watch-sync.js` watches compiled output and copies to `game/` automatically
 - **Shared types**: `src/common/*.d.ts` — event payloads, constants shared between server and client
 - **API types**: `@moddota/dota-lua-types` (server) and `@moddota/panorama-types` (client) provide full IntelliSense
 
 ### Key Benefits
 - **Autocomplete**: Type `GameRules.` or `mode.` and see every available method with parameter types
 - **Compile-time errors**: Catch typos, wrong argument types, and missing methods before launching the game
-- **Gradual migration**: Existing `.lua` and `.js` files continue to work — migrate files one at a time
+- **Auto-sync**: No manual file copying — `npm run dev` and `npm run build` handle everything
 
 ### Important Notes
-- The existing Lua/JS files are the **active game code**. TypeScript is opt-in for new code or gradual rewrites.
-- After `npm run build`, you still need to copy files to the `game/` directory (see below).
+- **Edit TypeScript files in `src/`**, not the compiled `.lua`/`.js` files — those are overwritten on build.
 - `addon_game_mode.lua` **must stay as Lua** — the engine requires this specific file at this path.
+- The tstl-generated Lua depends on `lualib_bundle.lua` — this is auto-generated and must be synced too.
 - Reference: [ModDota TypeScript guide](https://moddota.com/scripting/Typescript/typescript-introduction/), [API docs](https://docs.moddota.com/lua_server/)
 
 ## Critical: Dual Directory System
@@ -79,18 +76,7 @@ Dota 2 addons have TWO directories:
 - **`content/`** - Source/authoring directory. This is our working directory.
 - **`game/`** - Runtime directory. The engine ONLY loads from here.
 
-**You MUST copy files from `content/` to `game/` after every edit.** Use:
-```bash
-GAME_DIR="/c/Program Files (x86)/Steam/steamapps/common/dota 2 beta/game/dota_addons/randomdeathmatchturbo"
-CONTENT_DIR="/c/Program Files (x86)/Steam/steamapps/common/dota 2 beta/content/dota_addons/randomdeathmatchturbo"
-cp "$CONTENT_DIR/scripts/vscripts/addon_game_mode.lua" "$GAME_DIR/scripts/vscripts/addon_game_mode.lua"
-cp "$CONTENT_DIR/scripts/vscripts/turbo_rdm.lua" "$GAME_DIR/scripts/vscripts/turbo_rdm.lua"
-cp "$CONTENT_DIR/scripts/vscripts/timers.lua" "$GAME_DIR/scripts/vscripts/timers.lua"
-cp "$CONTENT_DIR/panorama/layout/custom_game/custom_ui_manifest.xml" "$GAME_DIR/panorama/layout/custom_game/custom_ui_manifest.xml"
-cp "$CONTENT_DIR/panorama/layout/custom_game/turbo_rdm_hud.xml" "$GAME_DIR/panorama/layout/custom_game/turbo_rdm_hud.xml"
-cp "$CONTENT_DIR/panorama/scripts/custom_game/turbo_rdm_hud.js" "$GAME_DIR/panorama/scripts/custom_game/turbo_rdm_hud.js"
-cp "$CONTENT_DIR/panorama/styles/custom_game/turbo_rdm_hud.css" "$GAME_DIR/panorama/styles/custom_game/turbo_rdm_hud.css"
-```
+**Syncing is automated.** `npm run build` and `npm run dev` copy files to `game/` automatically via `scripts/sync.js`. You can also run `npm run sync` manually. If you edit static files (XML, CSS, `addon_game_mode.lua`), run `npm run sync` to copy them.
 
 ## Dota 2 VScript API Pitfalls
 
@@ -98,11 +84,11 @@ These are hard-won lessons. Violating any of these will silently break the addon
 
 ### addon_game_mode.lua Rules
 - `Precache(context)` and `Activate()` **MUST be defined directly in addon_game_mode.lua**, not in a `require()`'d module. The engine only looks in this file for these entry points.
-- `Activate()` must create a class instance and store it on GameRules:
+- `Activate()` must import and call the game mode's init function:
   ```lua
+  local TurboRDM = require("turbo_rdm")
   function Activate()
-      GameRules.TurboRDM = TurboRDM()
-      GameRules.TurboRDM:InitGameMode()
+      TurboRDM.InitGameMode()
   end
   ```
 
@@ -171,4 +157,5 @@ Kill your hero quickly: `dota_kill 0`
 
 - The hero pool reads from Valve's built-in `scripts/npc/npc_heroes.txt` at runtime so new heroes are automatically included.
 - Each hero can only be played once per match (pool tracks used heroes, resets if exhausted).
-- `custom_game_mode.kv` exists but is NOT automatically loaded by the engine — all game settings are applied via Lua in `InitGameMode()`.
+- All game settings are applied in `InitGameMode()` via the Dota 2 API — no KV config files needed.
+- Rune spawning in custom games does not behave like normal Dota — custom game rune management may be needed.

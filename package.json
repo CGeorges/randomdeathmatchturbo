@@ -4,12 +4,14 @@
   "version": "1.0.0",
   "description": "Turbo Random Deathmatch - Dota 2 Custom Game",
   "scripts": {
-    "build": "npm run build:vscripts && npm run build:panorama",
+    "sync": "node scripts/sync.js",
+    "build": "npm run build:vscripts && npm run build:panorama && npm run sync",
     "build:vscripts": "tstl -p src/vscripts/tsconfig.json",
     "build:panorama": "tsc -p src/panorama/tsconfig.json",
     "dev": "npm-run-all --parallel dev:*",
     "dev:vscripts": "tstl -p src/vscripts/tsconfig.json --watch",
-    "dev:panorama": "tsc -p src/panorama/tsconfig.json --watch"
+    "dev:panorama": "tsc -p src/panorama/tsconfig.json --watch",
+    "dev:sync": "node scripts/watch-sync.js"
   },
   "devDependencies": {
     "@moddota/dota-lua-types": "latest",
