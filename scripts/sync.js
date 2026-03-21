@@ -12,6 +12,7 @@ const GAME = CONTENT.replace(
 );
 
 const FILES = [
+    "scripts/custom_game_mode.kv",
     "scripts/vscripts/addon_game_mode.lua",
     "scripts/vscripts/turbo_rdm.lua",
     "scripts/vscripts/lualib_bundle.lua",

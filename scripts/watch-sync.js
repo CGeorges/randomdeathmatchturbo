@@ -19,6 +19,7 @@ const FILES = [
 
 // Also sync static files once at startup
 const STATIC = [
+    "scripts/custom_game_mode.kv",
     "scripts/vscripts/addon_game_mode.lua",
     "scripts/vscripts/timers.lua",
     "panorama/layout/custom_game/custom_ui_manifest.xml",
