@@ -140,15 +140,14 @@ These are hard-won lessons. Violating any of these will silently break the addon
 ## Game Flow
 
 1. **HERO_SELECTION**: `OnGameStateChange` assigns each player a random hero via `player:SetSelectedHero()`
-2. **PRE_GAME**: 30 seconds, hero spawns at fountain
+2. **PRE_GAME**: 45 seconds, hero spawns at fountain
 3. **GAME_IN_PROGRESS**: Buildings get HP reduction (turbo modifier)
 4. **On Death**: `OnEntityKilled` fires:
-   - Saves inventory/gold
-   - Disables auto-respawn (`SetRespawnsDisabled(true)`)
+   - Saves inventory, gold, consumed items (Shard/Scepter/Moon Shard), and death timestamp
    - Picks 3 random heroes, sends to client Panorama UI
-   - Starts respawn timer (halved Turbo formula: `max(floor((level*2+4) * 0.5), 3)`)
-5. **Hero Selection**: Player picks from 3 heroes during respawn wait. Choice is stored but swap waits for timer.
-6. **Timer Expires**: `ExecuteHeroSwap` precaches the chosen hero, creates it via `CreateHeroForPlayer`, assigns to player, restores level/items/gold, and respawns.
+   - Engine handles respawn timing natively (no custom timer)
+5. **Hero Selection**: Player picks from 3 heroes. Selection UI hides immediately after pick.
+6. **Engine Respawn / Buyback**: When the engine respawns the old hero (normal timer or buyback), `OnNPCSpawned` detects the pending choice and calls `ExecuteHeroSwap` — precaches the chosen hero, creates it via `CreateHeroForPlayer`, restores level/items/gold (with cooldowns reduced by dead time), and respawns.
 
 ## Testing
 
@@ -163,6 +162,10 @@ Kill your hero quickly: `dota_kill 0`
 - **Minimap blocked**: HUD panel covered entire screen. Solved by using `hittest="false"` on root panel.
 - **Selection UI not loading**: XML file had no `<scripts>`/`<styles>` includes. Added them.
 - **Instant respawn**: Player pick triggered immediate swap. Solved by separating pick from respawn timer — pick stores choice, swap happens when timer expires.
+- **Buyback not working**: `SetRespawnsDisabled(true)` blocked buyback respawn. Solved by letting the engine handle respawns natively — `OnNPCSpawned` intercepts and does the hero swap.
+- **Item cooldowns reset on swap**: Items got fresh cooldowns on new hero. Solved by saving `GameRules:GetGameTime()` at death and subtracting elapsed dead time from saved cooldowns.
+- **Ghost 0-charge items**: Wards/consumables with 0 charges persisted after restore. Solved by comparing saved charges against newly created item's default charges — skip if saved=0 but default>0.
+- **Consumed items lost on death**: Aghanim's Shard, Scepter Blessing, Moon Shard are hero modifiers, not inventory items. Solved by saving modifier state in `playerConsumed` and re-applying on new hero.
 
 ## Notes
 
