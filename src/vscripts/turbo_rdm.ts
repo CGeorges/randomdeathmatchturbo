@@ -88,6 +88,12 @@ export function InitGameMode(): void {
     mode.SetGiveFreeTPOnDeath(true);
     mode.SetCustomBackpackSwapCooldown(3.0);
 
+    // Double XP from all sources (Turbo rules)
+    mode.SetModifyExperienceFilter(function(event: ModifyExperienceFilterEvent) {
+        event.experience = event.experience * 2;
+        return true;
+    } as any, {} as any);
+
     // Event listeners
     ListenToGameEvent("npc_spawned", (event) => OnNPCSpawned(event), undefined);
     ListenToGameEvent("entity_killed", (event) => OnEntityKilled(event), undefined);
@@ -99,7 +105,9 @@ export function InitGameMode(): void {
     });
 
     // Thinker for periodic tasks
-    mode.SetThink("OnThink", () => OnThink(), "TurboRDMThink", 1.0);
+    mode.SetThink(((entity: CBaseEntity): number | undefined => {
+        return OnThink();
+    }) as any, undefined, "TurboRDMThink", 1.0);
 
     // Rune system
     mode.SetUseDefaultDOTARuneSpawnLogic(true);
