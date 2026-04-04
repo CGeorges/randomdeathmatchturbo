@@ -2,10 +2,10 @@
 {
     "Title"         "Turbo Random Deathmatch"
     "Type"          "GameMode"
-    "Version"       "1.0.1"
+    "Version"       "1.1.0"
     "Author"        "Abaddon"
     "Description"   "Random Deathmatch with Turbo mode rules. Die and respawn as a new random hero. Passive gold, XP, and free TP scrolls like Turbo. Up to 5v5."
     "MaxPlayers"    "10"
     "Tags"          "Random Deathmatch, Turbo, RDM"
-    "Maps"          "turbo_rdm"
+    "Maps"          "dota"
 }

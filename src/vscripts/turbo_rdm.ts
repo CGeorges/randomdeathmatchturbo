@@ -124,7 +124,7 @@ function GetAvailableHeroes(_playerID: PlayerID): string[] {
     const heroData = LoadKeyValues("scripts/npc/npc_heroes.txt") as Record<string, any>;
     const available: string[] = [];
 
-    if (heroData) {
+    if (heroData !== undefined) {
         for (const [heroName] of Object.entries(heroData)) {
             if (typeof heroName === "string"
                 && heroName.startsWith("npc_dota_hero_")
@@ -230,7 +230,7 @@ function RestorePlayerInventory(hero: CDOTA_BaseNPC_Hero, playerID: PlayerID): v
         delete playerDeathTime[playerID];
     }
 
-    if (items) {
+    if (items !== undefined) {
         for (const entry of items) {
             const newItem = CreateItem(entry.name, hero as any, hero);
             if (newItem) {
@@ -264,7 +264,7 @@ function RestorePlayerInventory(hero: CDOTA_BaseNPC_Hero, playerID: PlayerID): v
 
     // Restore consumed items (Shard, Scepter Blessing, Moon Shard)
     const consumed = playerConsumed[playerID];
-    if (consumed) {
+    if (consumed !== undefined) {
         if (consumed.shard) {
             const shard = CreateItem("item_aghanims_shard", hero as any, hero);
             if (shard) hero.AddItem(shard);
@@ -483,7 +483,7 @@ function ExecuteHeroSwap(playerID: PlayerID, heroName: string): void {
     PrecacheUnitByNameAsync(heroName, () => {
         const newHero = CreateHeroForPlayer(heroName, player);
 
-        if (newHero) {
+        if (newHero !== undefined) {
             newHero.SetControllableByPlayer(playerID, true);
             newHero.SetOwner(player);
             player.SetAssignedHeroEntity(newHero);

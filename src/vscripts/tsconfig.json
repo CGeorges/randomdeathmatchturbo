@@ -12,7 +12,7 @@
   },
   "tstl": {
     "luaTarget": "JIT",
-    "sourceMapTraceback": true
+    "sourceMapTraceback": false
   },
   "include": ["./**/*.ts", "../common/**/*.d.ts"]
 }
