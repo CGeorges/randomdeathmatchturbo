@@ -43,7 +43,8 @@ function OnHeroSwap(event: { player_name: string; hero_name: string; player_id: 
 }
 
 function OnHeroHistoryUpdate(event: { heroes_json: string }): void {
-    heroHistory = JSON.parse(event.heroes_json || "[]");
+    const raw = event.heroes_json || "";
+    heroHistory = raw.length > 0 ? raw.split(",") : [];
     RebuildHeroHistoryUI();
 }
 

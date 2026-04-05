@@ -36,7 +36,8 @@ function OnHeroSwap(event) {
     }
 }
 function OnHeroHistoryUpdate(event) {
-    heroHistory = JSON.parse(event.heroes_json || "[]");
+    const raw = event.heroes_json || "";
+    heroHistory = raw.length > 0 ? raw.split(",") : [];
     RebuildHeroHistoryUI();
 }
 function RebuildHeroHistoryUI() {

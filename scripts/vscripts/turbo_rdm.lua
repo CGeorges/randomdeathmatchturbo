@@ -330,7 +330,7 @@ function ExecuteHeroSwap(self, playerID, heroName)
                 CustomGameEventManager:Send_ServerToPlayer(
                     player,
                     "turbo_rdm_hero_history",
-                    {heroes_json = JSON:stringify(history)}
+                    {heroes_json = table.concat(history, ",")}
                 )
                 CustomGameEventManager:Send_ServerToPlayer(player, "turbo_rdm_hero_chosen", {})
                 print((((("[TurboRDM] Player " .. tostring(playerID)) .. " swapped to ") .. heroName) .. " at level ") .. tostring(targetLevel))
@@ -410,7 +410,7 @@ function ____exports.InitGameMode(self)
     mode:SetCustomBackpackSwapCooldown(3)
     mode:SetModifyExperienceFilter(
         function(self, event)
-            event.experience = event.experience * 2
+            event.experience = event.experience * 1.6
             return true
         end,
         {}
