@@ -238,9 +238,12 @@ function GetHeroChoices(playerID: PlayerID, count: number): string[] {
 }
 
 // ---------------------------------------------------------------------------
-// Save a player's items + gold before hero swap
+// Snapshot a hero's items, gold, and consumed modifiers. Used both at death
+// and again right before the hero swap so items bought while dead (which go
+// to the stash on the old hero) are not lost. Does NOT touch playerDeathTime
+// so callers can control whether the dead-time elapsed clock resets.
 // ---------------------------------------------------------------------------
-function SavePlayerInventory(
+function CaptureHeroState(
   hero: CDOTA_BaseNPC_Hero,
   playerID: PlayerID,
 ): void {
@@ -261,7 +264,6 @@ function SavePlayerInventory(
 
   playerItems[playerID] = items;
   playerGold[playerID] = PlayerResource.GetGold(playerID);
-  playerDeathTime[playerID] = GameRules.GetGameTime();
 
   // Save consumed items (modifiers on the hero, not in item slots)
   playerConsumed[playerID] = {
@@ -269,8 +271,21 @@ function SavePlayerInventory(
     scepter: hero.HasModifier("modifier_item_ultimate_scepter_consumed"),
     moonshard: hero.HasModifier("modifier_item_moon_shard_consumed"),
   };
+}
 
-  print(`[TurboRDM] Saved ${items.length} items for player ${playerID}`);
+// ---------------------------------------------------------------------------
+// Save a player's items + gold at the moment of death. Stamps the death time
+// so item cooldowns can be reduced by the dead duration on restore.
+// ---------------------------------------------------------------------------
+function SavePlayerInventory(
+  hero: CDOTA_BaseNPC_Hero,
+  playerID: PlayerID,
+): void {
+  CaptureHeroState(hero, playerID);
+  playerDeathTime[playerID] = GameRules.GetGameTime();
+  print(
+    `[TurboRDM] Saved ${playerItems[playerID].length} items for player ${playerID}`,
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -557,11 +572,14 @@ function ExecuteHeroSwap(playerID: PlayerID, heroName: string): void {
   const player = PlayerResource.GetPlayer(playerID);
   if (!player) return;
 
-  const savedGold = PlayerResource.GetGold(playerID);
   const oldHero = PlayerResource.GetSelectedHeroEntity(playerID);
 
-  // Remove old hero first
+  // Re-snapshot the old hero right before removing it so items bought while
+  // dead (which went to the stash on this entity) and any gold changes since
+  // death are preserved. Death time is left untouched so item cooldowns
+  // continue to tick down across the dead period.
   if (oldHero && IsValidEntity(oldHero)) {
+    CaptureHeroState(oldHero, playerID);
     oldHero.SetRespawnsDisabled(true);
     UTIL_Remove(oldHero);
   }
@@ -597,9 +615,9 @@ function ExecuteHeroSwap(playerID: PlayerID, heroName: string): void {
           }
         }
 
-        // Restore items and gold
+        // Restore items and gold (gold is set inside RestorePlayerInventory
+        // from the snapshot captured just before the old hero was removed).
         RestorePlayerInventory(newHero, playerID);
-        PlayerResource.SetGold(playerID, savedGold, true);
 
         // Respawn the new hero
         newHero.SetRespawnsDisabled(false);

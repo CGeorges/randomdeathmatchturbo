@@ -4,7 +4,7 @@ local __TS__ObjectEntries = ____lualib.__TS__ObjectEntries
 local __TS__Delete = ____lualib.__TS__Delete
 local __TS__ArrayIncludes = ____lualib.__TS__ArrayIncludes
 local ____exports = {}
-local GetAvailableHeroes, AssignRandomHero, GetHeroChoices, SavePlayerInventory, RestorePlayerInventory, ApplyTurboBuildingModifiers, OnGameStateChange, OnNPCSpawned, OnEntityKilled, OnHeroPicked, ExecuteHeroSwap, OnThink, HERO_CHOICES_COUNT, usedHeroes, playerHeroHistory, playerItems, playerGold, pendingChoices, playerConsumed, playerDeathTime, swappingPlayers, restoringXP
+local GetAvailableHeroes, AssignRandomHero, GetHeroChoices, CaptureHeroState, SavePlayerInventory, RestorePlayerInventory, ApplyTurboBuildingModifiers, OnGameStateChange, OnNPCSpawned, OnEntityKilled, OnHeroPicked, ExecuteHeroSwap, OnThink, HERO_CHOICES_COUNT, usedHeroes, playerHeroHistory, playerItems, playerGold, pendingChoices, playerConsumed, playerDeathTime, swappingPlayers, restoringXP
 function GetAvailableHeroes(self, _playerID)
     local heroData = LoadKeyValues("scripts/npc/npc_heroes.txt")
     local available = {}
@@ -53,7 +53,7 @@ function GetHeroChoices(self, playerID, count)
     end
     return choices
 end
-function SavePlayerInventory(self, hero, playerID)
+function CaptureHeroState(self, hero, playerID)
     local items = {}
     do
         local slot = 0
@@ -72,13 +72,16 @@ function SavePlayerInventory(self, hero, playerID)
     end
     playerItems[playerID] = items
     playerGold[playerID] = PlayerResource:GetGold(playerID)
-    playerDeathTime[playerID] = GameRules:GetGameTime()
     playerConsumed[playerID] = {
         shard = hero:HasModifier("modifier_item_aghanims_shard"),
         scepter = hero:HasModifier("modifier_item_ultimate_scepter_consumed"),
         moonshard = hero:HasModifier("modifier_item_moon_shard_consumed")
     }
-    print((("[TurboRDM] Saved " .. tostring(#items)) .. " items for player ") .. tostring(playerID))
+end
+function SavePlayerInventory(self, hero, playerID)
+    CaptureHeroState(nil, hero, playerID)
+    playerDeathTime[playerID] = GameRules:GetGameTime()
+    print((("[TurboRDM] Saved " .. tostring(#playerItems[playerID])) .. " items for player ") .. tostring(playerID))
 end
 function RestorePlayerInventory(self, hero, playerID)
     local items = playerItems[playerID]
@@ -281,9 +284,9 @@ function ExecuteHeroSwap(self, playerID, heroName)
     if not player then
         return
     end
-    local savedGold = PlayerResource:GetGold(playerID)
     local oldHero = PlayerResource:GetSelectedHeroEntity(playerID)
     if oldHero and IsValidEntity(oldHero) then
+        CaptureHeroState(nil, oldHero, playerID)
         oldHero:SetRespawnsDisabled(true)
         UTIL_Remove(oldHero)
     end
@@ -309,7 +312,6 @@ function ExecuteHeroSwap(self, playerID, heroName)
                     end
                 end
                 RestorePlayerInventory(nil, newHero, playerID)
-                PlayerResource:SetGold(playerID, savedGold, true)
                 newHero:SetRespawnsDisabled(false)
                 newHero:RespawnHero(false, false)
                 local msg = ((PlayerResource:GetPlayerName(playerID) .. " has become ") .. heroName) .. "!"
