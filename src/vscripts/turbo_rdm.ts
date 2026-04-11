@@ -26,7 +26,7 @@ interface ConsumedItems {
 
 interface PendingChoice {
   heroes: string[];
-  level: number;
+  xp: number;
   chosenHero?: string;
 }
 
@@ -44,6 +44,9 @@ const pendingChoices: { [playerID: number]: PendingChoice } = {};
 const playerConsumed: { [playerID: number]: ConsumedItems } = {};
 const playerDeathTime: { [playerID: number]: number } = {};
 const swappingPlayers: { [playerID: number]: boolean } = {};
+// When true for a player, the XP filter skips the Turbo multiplier so we can
+// restore the exact XP amount on a new hero without double-multiplying.
+const restoringXP: { [playerID: number]: boolean } = {};
 
 // ---------------------------------------------------------------------------
 // Init (called from Activate() in addon_game_mode.lua)
@@ -114,6 +117,11 @@ export function InitGameMode(): void {
   // Double XP from all sources (Turbo rules)
   mode.SetModifyExperienceFilter(
     function (event: ModifyExperienceFilterEvent) {
+      // Skip the multiplier while we're restoring saved XP on a hero swap —
+      // the saved value is already post-multiplier and should not be scaled again.
+      if (restoringXP[event.player_id_const]) {
+        return true;
+      }
       event.experience = event.experience * 1.6;
       return true;
     } as any,
@@ -452,8 +460,10 @@ function OnEntityKilled(event: EntityKilledEvent): void {
   // 1. Save current items and gold
   SavePlayerInventory(killedUnit, playerID);
 
-  // 2. Get the engine's respawn time for the UI countdown
-  const level = killedUnit.GetLevel();
+  // 2. Get the engine's respawn time for the UI countdown. Save the exact XP
+  //    total (not just integer level) so partial progress toward the next
+  //    level is preserved across the hero swap.
+  const xp = killedUnit.GetCurrentXP();
   const respawnTime = killedUnit.GetRespawnTime();
 
   // 3. Get 3 hero choices and send to the client
@@ -461,7 +471,7 @@ function OnEntityKilled(event: EntityKilledEvent): void {
 
   pendingChoices[playerID] = {
     heroes: choices,
-    level,
+    xp,
   };
 
   const player = PlayerResource.GetPlayer(playerID);
@@ -541,7 +551,7 @@ function ExecuteHeroSwap(playerID: PlayerID, heroName: string): void {
   }
   playerHeroHistory[playerID].push(heroName);
 
-  const targetLevel = pending.level;
+  const targetXP = pending.xp;
   delete pendingChoices[playerID];
 
   const player = PlayerResource.GetPlayer(playerID);
@@ -567,10 +577,17 @@ function ExecuteHeroSwap(playerID: PlayerID, heroName: string): void {
         newHero.SetOwner(player);
         player.SetAssignedHeroEntity(newHero);
 
-        // Match old hero's level
-        for (let i = 1; i < targetLevel; i++) {
-          newHero.HeroLevelUp(false);
-        }
+        // Match old hero's XP exactly (preserves partial progress toward the
+        // next level). Suppress the Turbo XP multiplier during this restore
+        // since the saved value is already post-multiplier.
+        restoringXP[playerID] = true;
+        newHero.AddExperience(
+          targetXP,
+          EDOTA_ModifyXP_Reason.DOTA_ModifyXP_Unspecified,
+          false,
+          true,
+        );
+        restoringXP[playerID] = false;
 
         // Remove default items
         for (let slot = 0; slot <= 16; slot++) {
@@ -623,7 +640,7 @@ function ExecuteHeroSwap(playerID: PlayerID, heroName: string): void {
         );
 
         print(
-          `[TurboRDM] Player ${playerID} swapped to ${heroName} at level ${targetLevel}`,
+          `[TurboRDM] Player ${playerID} swapped to ${heroName} with ${targetXP} XP (level ${newHero.GetLevel()})`,
         );
       } else {
         print(`[TurboRDM] ERROR: Failed to create hero ${heroName}`);

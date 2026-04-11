@@ -4,7 +4,7 @@ local __TS__ObjectEntries = ____lualib.__TS__ObjectEntries
 local __TS__Delete = ____lualib.__TS__Delete
 local __TS__ArrayIncludes = ____lualib.__TS__ArrayIncludes
 local ____exports = {}
-local GetAvailableHeroes, AssignRandomHero, GetHeroChoices, SavePlayerInventory, RestorePlayerInventory, ApplyTurboBuildingModifiers, OnGameStateChange, OnNPCSpawned, OnEntityKilled, OnHeroPicked, ExecuteHeroSwap, OnThink, HERO_CHOICES_COUNT, usedHeroes, playerHeroHistory, playerItems, playerGold, pendingChoices, playerConsumed, playerDeathTime, swappingPlayers
+local GetAvailableHeroes, AssignRandomHero, GetHeroChoices, SavePlayerInventory, RestorePlayerInventory, ApplyTurboBuildingModifiers, OnGameStateChange, OnNPCSpawned, OnEntityKilled, OnHeroPicked, ExecuteHeroSwap, OnThink, HERO_CHOICES_COUNT, usedHeroes, playerHeroHistory, playerItems, playerGold, pendingChoices, playerConsumed, playerDeathTime, swappingPlayers, restoringXP
 function GetAvailableHeroes(self, _playerID)
     local heroData = LoadKeyValues("scripts/npc/npc_heroes.txt")
     local available = {}
@@ -224,10 +224,10 @@ function OnEntityKilled(self, event)
     end
     local playerID = killedUnit:GetPlayerID()
     SavePlayerInventory(nil, killedUnit, playerID)
-    local level = killedUnit:GetLevel()
+    local xp = killedUnit:GetCurrentXP()
     local respawnTime = killedUnit:GetRespawnTime()
     local choices = GetHeroChoices(nil, playerID, HERO_CHOICES_COUNT)
-    pendingChoices[playerID] = {heroes = choices, level = level}
+    pendingChoices[playerID] = {heroes = choices, xp = xp}
     local player = PlayerResource:GetPlayer(playerID)
     if player then
         CustomGameEventManager:Send_ServerToPlayer(player, "turbo_rdm_hero_choices", {hero1 = choices[1], hero2 = choices[2], hero3 = choices[3] or choices[1], respawn_time = respawnTime})
@@ -275,7 +275,7 @@ function ExecuteHeroSwap(self, playerID, heroName)
     end
     local ____playerHeroHistory_playerID_2 = playerHeroHistory[playerID]
     ____playerHeroHistory_playerID_2[#____playerHeroHistory_playerID_2 + 1] = heroName
-    local targetLevel = pending.level
+    local targetXP = pending.xp
     __TS__Delete(pendingChoices, playerID)
     local player = PlayerResource:GetPlayer(playerID)
     if not player then
@@ -295,13 +295,9 @@ function ExecuteHeroSwap(self, playerID, heroName)
                 newHero:SetControllableByPlayer(playerID, true)
                 newHero:SetOwner(player)
                 player:SetAssignedHeroEntity(newHero)
-                do
-                    local i = 1
-                    while i < targetLevel do
-                        newHero:HeroLevelUp(false)
-                        i = i + 1
-                    end
-                end
+                restoringXP[playerID] = true
+                newHero:AddExperience(targetXP, DOTA_ModifyXP_Unspecified, false, true)
+                restoringXP[playerID] = false
                 do
                     local slot = 0
                     while slot <= 16 do
@@ -333,7 +329,7 @@ function ExecuteHeroSwap(self, playerID, heroName)
                     {heroes_json = table.concat(history, ",")}
                 )
                 CustomGameEventManager:Send_ServerToPlayer(player, "turbo_rdm_hero_chosen", {})
-                print((((("[TurboRDM] Player " .. tostring(playerID)) .. " swapped to ") .. heroName) .. " at level ") .. tostring(targetLevel))
+                print(((((((("[TurboRDM] Player " .. tostring(playerID)) .. " swapped to ") .. heroName) .. " with ") .. tostring(targetXP)) .. " XP (level ") .. tostring(newHero:GetLevel())) .. ")")
             else
                 print("[TurboRDM] ERROR: Failed to create hero " .. heroName)
             end
@@ -354,6 +350,7 @@ pendingChoices = {}
 playerConsumed = {}
 playerDeathTime = {}
 swappingPlayers = {}
+restoringXP = {}
 function ____exports.InitGameMode(self)
     print("[TurboRDM] Initializing Turbo Random Deathmatch...")
     local mode = GameRules:GetGameModeEntity()
@@ -410,6 +407,9 @@ function ____exports.InitGameMode(self)
     mode:SetCustomBackpackSwapCooldown(3)
     mode:SetModifyExperienceFilter(
         function(self, event)
+            if restoringXP[event.player_id_const] then
+                return true
+            end
             event.experience = event.experience * 1.6
             return true
         end,
